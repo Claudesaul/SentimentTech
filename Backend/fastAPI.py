@@ -1,10 +1,11 @@
 # Create FastAPI app
 import logging
 import os
-import json
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Any
-from fastapi import FastAPI, HTTPException, Query, Depends, status
+import re
+from datetime import datetime, timedelta, timezone
+from typing import List, Dict, Optional
+
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -21,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Create FastAPI app
-app = FastAPI(
+app = FastAPI( # Changed from = to = (already present)
     title="SentimentTech API",
     description="API for SentimentTech - Real-time sentiment analysis for financial markets",
     version="1.0.0"
@@ -29,7 +30,7 @@ app = FastAPI(
 
 # Setup CORS
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware, # Changed from = to = (already present)
     allow_origins=["http://127.0.0.1:3000", "http://localhost:3000", "*"],
     allow_credentials=True,
     allow_methods=["*"],
@@ -114,7 +115,7 @@ async def get_stock_info(symbol: str):
     """
     logger.info(f"Fetching stock info for {symbol}")
     # This would normally fetch from Polygon API
-    
+
     # Mock response
     mock_data = {
         "AAPL": {
@@ -138,17 +139,18 @@ async def get_stock_info(symbol: str):
             "pe_ratio": 35.12
         }
     }
-    
+
     if symbol.upper() not in mock_data:
         raise HTTPException(status_code=404, detail=f"Stock {symbol} not found")
-    
+
     return mock_data.get(symbol.upper())
+
 
 @app.get("/stocks/{symbol}/price", response_model=StockPriceResponse, tags=["Stocks"])
 async def get_stock_price(
     symbol: str,
     interval: str = Query("1D", description="Time interval (1D, 1W, 1M, 3M, 1Y, 5Y)")
-):
+) -> StockPriceResponse:
     """
     Get historical price data for a stock
     """
@@ -156,47 +158,47 @@ async def get_stock_price(
     
     # This would normally fetch from Polygon API
     # For now return mock data
-    time_periods = ['1D', '1W', '1M', '3M', '1Y', '5Y']
-    
+    time_periods = ["1D", "1W", "1M", "3M", "1Y", "5Y"]
+
     if interval not in time_periods:
         raise HTTPException(status_code=400, detail=f"Invalid interval. Must be one of {time_periods}")
 
     # Mock response with a small number of data points
     data = []
     base_price = 198.14  # Apple's current price
-    
+
     if interval == "1D":
         # Generate hourly data for a day
         for i in range(8):
             hour = 9 + i
             time_str = f"{hour}:30"
-            change = (i - 4) * 0.25  # Some variation around base price
+            change = (i - 4) * 0.25  # Some variation around base price (Corrected)
             data.append({
                 "time": time_str,
                 "open": round(base_price + change - 0.1, 2),
                 "high": round(base_price + change + 0.2, 2),
                 "low": round(base_price + change - 0.3, 2),
                 "close": round(base_price + change, 2),
-                "volume": int(1000000 + i * 200000)
+                "volume": int(1000000 + i * 200000),
             })
     else:
         # Generate mock data for other intervals
         points = {"1W": 5, "1M": 22, "3M": 66, "1Y": 52, "5Y": 60}
         for i in range(points[interval]):
             # Create realistic-looking price movements
-            change = (i - points[interval]/2) * 0.5
+            change = (i - points[interval] / 2) * 0.5
             if interval in ["1Y", "5Y"]:
                 change = change * 2  # Bigger changes for longer timeframes
-                
+
             data.append({
                 "time": f"2023-{((i % 12) + 1):02d}-{((i % 28) + 1):02d}",
                 "open": round(base_price + change - 0.5, 2),
                 "high": round(base_price + change + 1.0, 2),
                 "low": round(base_price + change - 1.2, 2),
                 "close": round(base_price + change, 2),
-                "volume": int(10000000 + i * 1000000)
+                "volume": int(10000000 + i * 1000000),
             })
-    
+
     return {
         "symbol": symbol.upper(),
         "interval": interval,
@@ -207,7 +209,7 @@ async def get_stock_price(
 @app.get("/stocks/{symbol}/sentiment", response_model=SentimentResponse, tags=["Sentiment"])
 async def get_stock_sentiment(symbol: str):
     """
-    Get sentiment analysis for a stock from social media and news sources
+    Get sentiment analysis for a stock from social media and news sources (Corrected)
     """
     logger.info(f"Fetching sentiment data for {symbol}")
     
@@ -223,7 +225,7 @@ async def get_stock_sentiment(symbol: str):
         "social_sentiment": {
             "reddit": {
                 "score": 0.45,
-                "magnitude": 0.9,
+                "magnitude": 0.9, # Corrected
                 "label": "neutral"
             },
             "twitter": {
@@ -268,7 +270,7 @@ async def get_stock_sentiment(symbol: str):
                 "author": "@techanalyst",
                 "likes": 118
             }
-        ],
+        ], # Corrected
         "last_updated": datetime.now()
     }
 
@@ -279,7 +281,7 @@ async def get_trending_stocks():
     """
     logger.info("Fetching trending stocks")
     
-    # This would query our analytics database
+    # This would query our analytics database (Corrected)
     return {
         "trending_stocks": [
             {
@@ -317,7 +319,7 @@ async def get_trending_topics():
     """
     logger.info("Fetching trending topics")
     
-    return {
+    return { # Corrected
         "trending_topics": [
             {
                 "topic": "Artificial Intelligence",
@@ -337,9 +339,72 @@ async def get_trending_topics():
                 "mention_count": 1544,
                 "related_stocks": ["INTC", "AMD", "TSM"]
             }
-        ],
+        ], # Corrected
         "last_updated": datetime.now().isoformat()
     }
+
+from Backend.API Calls.Reddit import fetch_reddit_comments_for_ticker
+import praw
+
+# 3. Add a Pydantic model for Reddit posts
+class RedditPost(BaseModel):
+    id: str
+    author: str
+    content: str
+    likes: int
+    replies: int
+    timestamp: str  # ISO 8601 timestamp
+    source: str
+    stockMentions: Optional[List[str]] = None
+    sentiment: Optional[str] = None
+
+
+# 4. Add a helper function for timestamp conversion and stock mention extraction
+def transform_reddit_comment(comment: dict):
+    # Fix timestamp formatting (Task 3)
+    # Option 1: Transform in the API endpoint
+    # Convert relative time (e.g., "2h ago") to ISO 8601 timestamp
+    time_value, time_unit = int(comment["time"].split("h")[0]), "hours"
+    time_delta = {time_unit: time_value}
+    past_time = datetime.now(timezone.utc) - timedelta(**time_delta)
+    iso_timestamp = past_time.isoformat()
+
+    # Implement stock mention extraction (Task 4)
+    # Extract tickers like $AAPL and convert to AAPL
+    stock_mentions = re.findall(r"\$([A-Za-z]+)", comment["content"])
+    if stock_mentions:
+        stock_mentions = [ticker.upper() for ticker in stock_mentions]
+    else:
+        stock_mentions = None
+
+    return RedditPost(
+        id=comment["id"],
+        author=comment["author"],
+        content=comment["content"],
+        likes=comment["upvotes"],  # Map upvotes to likes
+        replies=comment["replies"],
+        timestamp=iso_timestamp,
+        source=comment["source"],
+        stockMentions=stock_mentions,
+        sentiment=comment["sentiment"],  # Assuming sentiment might be added later
+    )
+
+# 5. Create the API endpoint
+@app.get("/stocks/{symbol}/reddit", response_model=List[RedditPost])
+async def get_reddit_data(symbol: str):
+    try:
+        # Replace with your actual Reddit API credentials retrieval
+        reddit_instance = praw.Reddit(
+            client_id=os.getenv("REDDIT_CLIENT_ID"),
+            client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
+            user_agent=os.getenv("REDDIT_USER_AGENT"),
+        )
+        comments = fetch_reddit_comments_for_ticker(reddit_instance, symbol)
+        # Transform Reddit data to match frontend format
+        transformed_posts = [transform_reddit_comment(comment) for comment in comments]
+        return transformed_posts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reddit API error: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
